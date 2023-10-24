@@ -8,7 +8,7 @@ import subprocess
 import hashlib
 import base64
 import multiprocessing
-import gzip
+import zlib
 import json
 import math
 import boto3
@@ -72,8 +72,7 @@ def upload_block(disk_path, s3_name, block_pos, compression):
     start_time = time.time()
     block_id = int(block_pos / BLOCK_SIZE)
     block_contents = fetch_block(disk_path, block_pos)
-    # TODO: switch to zlib for speed
-    compressed = gzip.compress(block_contents, compression)
+    compressed = zlib.compress(block_contents, level=compression, wbits=31)
     # TODO: add SHA1 checksum to the compressed block
     response = CLIENT.put_object(
         Body=compressed,

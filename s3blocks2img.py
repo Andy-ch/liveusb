@@ -2,7 +2,7 @@
 
 import os
 import json
-import gzip
+import zlib
 import argparse
 import multiprocessing
 import tqdm
@@ -88,8 +88,7 @@ def download_block(s3_name, disk_path, block_pos, block_size):
         Bucket=BUCKET,
         Key=f'{PREFIX}/{s3_name}/block_{block_id}.bin.gz'
     )
-    # TODO: switch to zlib for speed
-    block_contents = gzip.decompress(response['Body'].read())
+    block_contents = zlib.decompress(response['Body'].read(), wbits=31)
     with open(disk_path, 'r+b') as fo:
         fo.seek(block_pos)
         fo.write(block_contents)
