@@ -48,14 +48,18 @@ def fetch_block(disk_path, block_pos):
         return fo.read(BLOCK_SIZE)
 
 
+def get_data_hash(data):
+    hash_object = hashlib.sha1(data)
+    pb_hash = hash_object.digest()
+    return base64.b64encode(pb_hash).decode('utf8')
+
+
 def get_block_hash(disk_path, block_pos):
     block_id = int(block_pos / BLOCK_SIZE)
     if block_id in LOCAL_CHECKSUMS:
         return LOCAL_CHECKSUMS[block_id]
     block_contents = fetch_block(disk_path, block_pos)
-    hash_object = hashlib.sha1(block_contents)
-    pb_hash = hash_object.digest()
-    base64_encoded = base64.b64encode(pb_hash).decode('utf8')
+    base64_encoded = get_data_hash(block_contents)
     LOCAL_CHECKSUMS[block_id] = base64_encoded
     return base64_encoded
 
@@ -73,10 +77,10 @@ def upload_block(disk_path, s3_name, block_pos, compression):
     block_id = int(block_pos / BLOCK_SIZE)
     block_contents = fetch_block(disk_path, block_pos)
     compressed = zlib.compress(block_contents, level=compression, wbits=31)
-    # TODO: add SHA1 checksum to the compressed block
     response = CLIENT.put_object(
         Body=compressed,
         Bucket=BUCKET,
+        ChecksumSHA1=get_data_hash(compressed),
         Metadata={
             'uncompressedsha1': get_block_hash(disk_path, block_pos)
         },
