@@ -31,8 +31,8 @@ def is_block_exists_local(disk_path, block_pos):
     return False
 
 
-def is_block_changed(s3_name, disk_path, block_pos, blocks_num):
-    block_id = int(block_pos / blocks_num)
+def is_block_changed(s3_name, disk_path, block_pos, block_size):
+    block_id = int(block_pos / block_size)
     if not is_block_exists_local(disk_path, block_pos):
         return True
     response = CLIENT.head_object(
@@ -43,9 +43,9 @@ def is_block_changed(s3_name, disk_path, block_pos, blocks_num):
     return s3_checksum != get_block_hash(disk_path, block_pos)
 
 
-def is_block_download_needed(s3_name, disk_path, block_pos, blocks_num):
+def is_block_download_needed(s3_name, disk_path, block_pos, block_size):
     if is_block_exists_local(disk_path, block_pos):
-        return is_block_changed(s3_name, disk_path, block_pos, blocks_num)
+        return is_block_changed(s3_name, disk_path, block_pos, block_size)
     return True
 
 
@@ -57,7 +57,7 @@ def get_blocks_to_download(s3_name, disk_path):
     with multiprocessing.Pool() as pool:
         async_results = []
         for block_pos in range(0, blocks_num * block_size, block_size):
-            async_results.append(pool.apply_async(is_block_download_needed, (s3_name, disk_path, block_pos, blocks_num)))
+            async_results.append(pool.apply_async(is_block_download_needed, (s3_name, disk_path, block_pos, block_size)))
         results = []
         for i, async_result in tqdm.tqdm(list(enumerate(async_results))):
             if async_result.get():
@@ -88,7 +88,7 @@ def download_block(s3_name, disk_path, block_pos, block_size):
         Bucket=BUCKET,
         Key=f'{PREFIX}/{s3_name}/block_{block_id}.bin.gz'
     )
-    block_contents = zlib.decompress(response['Body'].read(), wbits=31)
+    block_contents = zlib.decompress(response['Body'].read())
     with open(disk_path, 'r+b') as fo:
         fo.seek(block_pos)
         fo.write(block_contents)
