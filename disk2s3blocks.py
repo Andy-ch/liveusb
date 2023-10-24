@@ -72,7 +72,9 @@ def upload_block(disk_path, s3_name, block_pos, compression):
     start_time = time.time()
     block_id = int(block_pos / BLOCK_SIZE)
     block_contents = fetch_block(disk_path, block_pos)
+    # TODO: switch to zlib for speed
     compressed = gzip.compress(block_contents, compression)
+    # TODO: add SHA1 checksum to the compressed block
     response = CLIENT.put_object(
         Body=compressed,
         Bucket=BUCKET,
@@ -155,7 +157,7 @@ def process_blocks(disk_path, s3_name):
 
 def main():
     parser = argparse.ArgumentParser(
-        prog='./disk2s3.py',
+        prog='./disk2s3blocks.py',
         description='Captures and uploads a disk image to S3, minding the changed blocks'
     )
     parser.add_argument('disk_path', help='Local path to the block device, e.g. /dev/sda')
