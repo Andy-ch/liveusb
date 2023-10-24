@@ -74,7 +74,7 @@ def init_img_file(disk_path, block_size, blocks_num):
             return
     print('Initializing img file...')
     with open(disk_path, 'ab') as fo:
-        for _ in tqdm.tqdm(range(appendage_len / block_size)):
+        for _ in tqdm.tqdm(range(int(appendage_len / block_size))):
             fo.write(b'\x00' * block_size)
     appendage_len = target_len - os.path.getsize(disk_path)
     with open(disk_path, 'ab') as fo:
