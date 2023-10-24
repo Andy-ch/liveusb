@@ -3,6 +3,7 @@
 import os
 import json
 import gzip
+import math
 import argparse
 import multiprocessing
 import tqdm
@@ -72,9 +73,10 @@ def init_img_file(disk_path, block_size, blocks_num):
         appendage_len = target_len - os.path.getsize(disk_path)
         if appendage_len <= 0:
             return
+    print('Initializing img file...')
     with open(disk_path, 'ab') as fo:
-        for _ in range(appendage_len):
-            fo.write('\x00')
+        for _ in tqdm.tqdm(range(math.ceil(appendage_len / block_size))):
+            fo.write(b'\x00' * block_size)
 
 
 def download_block(s3_name, disk_path, block_pos, block_size):
@@ -96,6 +98,7 @@ def async_download_blocks(s3_name, disk_path, blocks_to_download):
     block_size = metadata['block_size']
     blocks_num = metadata['blocks_num']
     init_img_file(disk_path, block_size, blocks_num)
+    print('Starting download...')
     with multiprocessing.Pool() as pool:
         async_results = []
         for block_pos in blocks_to_download:
@@ -107,7 +110,7 @@ def async_download_blocks(s3_name, disk_path, blocks_to_download):
 
 def process_blocks(s3_name, disk_path):
     blocks_to_download = get_blocks_to_download(s3_name, disk_path)
-    print(f'{len(blocks_to_download)} blocks need downloading. Starting now...')
+    print(f'{len(blocks_to_download)} blocks need downloading.')
     async_download_blocks(s3_name, disk_path, blocks_to_download)
     print('Download complete')
 

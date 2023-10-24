@@ -1,3 +1,4 @@
 *.vdi
 *.iso
 mnt
+__pycache__
