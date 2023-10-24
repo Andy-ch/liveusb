@@ -3,7 +3,6 @@
 import os
 import json
 import gzip
-import math
 import argparse
 import multiprocessing
 import tqdm
@@ -75,8 +74,12 @@ def init_img_file(disk_path, block_size, blocks_num):
             return
     print('Initializing img file...')
     with open(disk_path, 'ab') as fo:
-        for _ in tqdm.tqdm(range(math.ceil(appendage_len / block_size))):
+        for _ in tqdm.tqdm(range(appendage_len / block_size)):
             fo.write(b'\x00' * block_size)
+    appendage_len = target_len - os.path.getsize(disk_path)
+    with open(disk_path, 'ab') as fo:
+        for _ in range(appendage_len):
+            fo.write(b'\x00')
 
 
 def download_block(s3_name, disk_path, block_pos, block_size):
@@ -87,7 +90,7 @@ def download_block(s3_name, disk_path, block_pos, block_size):
     )
     # TODO: switch to zlib for speed
     block_contents = gzip.decompress(response['Body'].read())
-    with open(disk_path, 'ab') as fo:
+    with open(disk_path, 'r+b') as fo:
         fo.seek(block_pos)
         fo.write(block_contents)
     assert get_block_hash(disk_path, block_pos) == response['Metadata']['uncompressedsha1']
@@ -112,7 +115,7 @@ def process_blocks(s3_name, disk_path):
     blocks_to_download = get_blocks_to_download(s3_name, disk_path)
     print(f'{len(blocks_to_download)} blocks need downloading.')
     async_download_blocks(s3_name, disk_path, blocks_to_download)
-    print('Download complete')
+    print('Download complete.')
 
 
 def main():

@@ -1,4 +1,5 @@
 *.vdi
 *.iso
+*.img
 mnt
 __pycache__
