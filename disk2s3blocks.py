@@ -76,7 +76,7 @@ def upload_block(disk_path, s3_name, block_pos, compression):
     start_time = time.time()
     block_id = int(block_pos / BLOCK_SIZE)
     block_contents = fetch_block(disk_path, block_pos)
-    compressed = zlib.compress(block_contents, level=compression, wbits=31)
+    compressed = zlib.compress(block_contents, level=compression)
     response = CLIENT.put_object(
         Body=compressed,
         Bucket=BUCKET,
