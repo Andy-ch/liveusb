@@ -1,18 +1,18 @@
 #!/usr/bin/python3
 
 import os
+import sys
 import json
 import zlib
+import time
 import argparse
 import multiprocessing
 import tqdm
 import boto3
 
-from disk2s3blocks import get_block_hash
+from disk2s3blocks import BUCKET, PREFIX, get_block_hash
 
 CLIENT = boto3.client('s3')
-BUCKET = 'andychweb-uploads'
-PREFIX = 'disks'
 S3_CHECKSUMS = {}
 LOCAL_CHECKSUMS = {}
 
@@ -111,6 +111,16 @@ def async_download_blocks(s3_name, disk_path, blocks_to_download):
 
 
 def process_blocks(s3_name, disk_path):
+    if os.path.exists(disk_path):
+        print(f'Going to make changes to {disk_path} which already exists.')
+        print('Making a backup copy is recommended')
+        confirmation_str = f'Confirm changes to {disk_path}'
+        inp = input(f'Please type in "{confirmation_str}" to proceed: ')
+        if inp != confirmation_str:
+            print('No/incorrect confirmation string. Aborting.')
+            sys.exit(1)
+        for _ in tqdm.tqdm(range(10)):
+            time.sleep(1)
     blocks_to_download = get_blocks_to_download(s3_name, disk_path)
     print(f'{len(blocks_to_download)} blocks need downloading.')
     async_download_blocks(s3_name, disk_path, blocks_to_download)
