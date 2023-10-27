@@ -113,6 +113,7 @@ def async_download_blocks(s3_name, disk_path, blocks_to_download):
 def process_blocks(s3_name, disk_path):
     if os.path.exists(disk_path):
         print(f'Going to make changes to {disk_path} which already exists.')
+        print(f'{disk_path} MUST be an image, not a block device!')
         print('Making a backup copy is recommended')
         confirmation_str = f'Confirm changes to {disk_path}'
         inp = input(f'Please type in "{confirmation_str}" to proceed: ')

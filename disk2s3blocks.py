@@ -11,6 +11,7 @@ import multiprocessing
 import zlib
 import json
 import math
+import shutil
 import boto3
 import botocore
 import tqdm
@@ -158,6 +159,38 @@ def process_blocks(disk_path, s3_name):
     print('Upload complete.')
 
 
+def zerofill_partition(partition):
+    print(f'Zerofilling free space on partition {partition}...')
+    mount_dir = 'zerofill_mnt'
+    zerofile = f'zerofill_mnt/zerofill{partition.replace("/", "_")}'
+    os.makedirs(mount_dir, exist_ok=True)
+    subprocess.run(['/usr/bin/mount', partition, mount_dir], check=True)
+    free_space = shutil.disk_usage(mount_dir).free
+    with open(zerofile, 'wb') as fo:
+        for _ in tqdm.tqdm(range(free_space // BLOCK_SIZE)):
+            fo.write(b'\x00' * BLOCK_SIZE)
+        for _ in range(free_space % BLOCK_SIZE - 1):
+            fo.write(b'\x00')
+    os.remove(zerofile)
+    subprocess.run(['/usr/bin/umount', mount_dir], check=True)
+
+
+def zerofill_disk(disk_path):
+    # TODO: consider using shred, ntfsclone
+    process = subprocess.run(['/usr/sbin/fdisk', '-l', disk_path], capture_output=True, check=True)
+    print(process.stdout.decode('utf8'))
+    print('Zerofilling the disk is generally not recommended for SSD disks')
+    question = f'Would you like to zerofill each partition of {disk_path}? (y/n): '
+    if input(question).lower() != 'y':
+        return
+    print(f'Checking partitions of disk {disk_path}...')
+    for line in process.stdout.decode('utf8').split('\n'):
+        if not line.startswith(disk_path):
+            continue
+        partition = line.split(' ')[0]
+        zerofill_partition(partition)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='./disk2s3blocks.py',
@@ -166,6 +199,7 @@ def main():
     parser.add_argument('disk_path', help='Local path to the block device, e.g. /dev/sda')
     parser.add_argument('s3_name', help='Disk image name in S3')
     args = parser.parse_args()
+    zerofill_disk(args.disk_path)
     process_blocks(args.disk_path, args.s3_name)
 
 if __name__ == '__main__':
