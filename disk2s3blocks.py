@@ -15,6 +15,7 @@ import shutil
 import boto3
 import botocore
 import tqdm
+import requests
 
 BLOCK_SIZE = 15728640  # 15MB
 
@@ -191,6 +192,28 @@ def zerofill_disk(disk_path):
         zerofill_partition(partition)
 
 
+def prepare_telegram_token():
+    if os.path.exists('telegram.json'):
+        return
+    config = {
+        'token': input('Please enter Telegram bot token: '),
+        'chat_id': input('Please enter Telegram chat id: ')
+    }
+    with open('telegram.json', 'w') as fo:
+        json.dump(config, fo)
+
+
+def send_telegram(message):
+    with open('telegram.json') as fo:
+        config = json.load(fo)
+    url = f"https://api.telegram.org/bot{config['token']}/sendMessage"
+    payload = {
+        "text": message.encode("utf8"),
+        "chat_id": config['chat_id']
+    }
+    requests.post(url, payload)
+
+
 def main():
     parser = argparse.ArgumentParser(
         prog='./disk2s3blocks.py',
@@ -199,8 +222,15 @@ def main():
     parser.add_argument('disk_path', help='Local path to the block device, e.g. /dev/sda')
     parser.add_argument('s3_name', help='Disk image name in S3')
     args = parser.parse_args()
-    zerofill_disk(args.disk_path)
-    process_blocks(args.disk_path, args.s3_name)
+    prepare_telegram_token()
+    try:
+        zerofill_disk(args.disk_path)
+        process_blocks(args.disk_path, args.s3_name)
+        send_telegram(f'{args.s3_name} disk upload complete')
+    except Exception as exc:
+        send_telegram(f'Exception during {args.s3_name} disk upload:\n{exc}')
+        raise exc
+
 
 if __name__ == '__main__':
     main()
