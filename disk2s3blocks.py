@@ -24,15 +24,15 @@ def get_disk_size(disk_path):
     process = subprocess.run(['/usr/sbin/blockdev', '--getsize64', disk_path], capture_output=True)
     return int(process.stdout)
 
-SESSION = boto3.session.Session()
-CLIENT = boto3.client(
-    service_name='s3',
+S3_RESOURCE = boto3.resource(
+    's3',
     config=botocore.config.Config(
         s3={
             'use_accelerate_endpoint': True
         }
     )
 )
+CLIENT = S3_RESOURCE.meta.client
 BUCKET = 'andychweb-uploads'
 PREFIX = 'disks'
 S3_CHECKSUMS = {}
