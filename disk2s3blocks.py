@@ -189,7 +189,7 @@ def zerofill_disk(disk_path):
     process = subprocess.run(['/usr/sbin/fdisk', '-l', disk_path], capture_output=True, check=True)
     print(process.stdout.decode('utf8'))
     print('Zerofilling the disk is generally not recommended for SSD disks')
-    question = f'Would you like to zerofill each partition of {disk_path}? (y/n): '
+    question = f'Would you like to zerofill free space on each partition of {disk_path}? (y/n): '
     if input(question).lower() != 'y':
         return
     print(f'Checking partitions of disk {disk_path}...')
