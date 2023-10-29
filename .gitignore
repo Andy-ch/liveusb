@@ -4,3 +4,4 @@
 mnt
 __pycache__
 telegram.json
+.vagrant
