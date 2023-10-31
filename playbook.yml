@@ -1,0 +1,92 @@
+---
+- hosts: lisa
+  become: yes
+  tasks:
+    - name: Enable autologin
+      lineinfile:
+        path: /etc/sddm.conf
+        regexp: "{{item.regexp}}"
+        line: "{{item.line}}"
+      loop:
+        - regexp: '^User='
+          line: 'User=vagrant'
+        - regexp: '^Relogin='
+          line: 'Relogin=true'
+
+    - name: Set timezone
+      command: "/usr/bin/timedatectl set-timezone {{timezone}}"
+
+    - name: Set keyboard layout
+      shell: "DISPLAY=:0 /usr/bin/setxkbmap -option grp:ctrl_shift_toggle '{{keyboard_layouts}}'"
+      when: keyboard_layouts is defined
+      become_user: vagrant
+
+#    - name: Set system locale
+#      command: "/usr/bin/localectl set-locale {{locale}}.UTF-8"
+#      when: locale is defined
+#      become_user: vagrant
+
+    - name: Check status of Meshagent
+      service:
+        name: meshagent
+        state: started
+      check_mode: yes
+      ignore_errors: yes
+      register: meshagent_state
+
+    - name: Install MeshCentral agent
+      block:
+        - name: Download Meshagent installer
+          get_url:
+            url: "{{meshagent_url}}"
+            dest: /root/meshagent
+            mode: '0755'
+
+        - name: Install Meshagent
+          command: /root/meshagent -install
+
+        - name: Delete Meshagent installer
+          file:
+            path: /root/meshagent
+            state: absent
+      when: meshagent_state.failed
+
+    - name: Install Apt packages
+      apt:
+        name: "{{item}}"
+        state: present
+      loop:
+        - tmux
+
+    - name: Install scripts
+      copy:
+        src: "scripts/{{item}}"
+        dest: /home/vagrant/
+        owner: vagrant
+        group: vagrant
+        mode: '0755'
+      loop:
+        - show_tmux_ro.sh
+        - lists3disks.py
+        - disk2s3blocks.py
+
+    - name: Clone linux-live repo
+      git:
+        repo: 'https://github.com/Tomas-M/linux-live.git'
+        dest: /linux-live
+        version: v2.12
+        force: yes
+
+    - name: Adjust linux-live config
+      lineinfile:
+        path: /linux-live/config
+        regexp: "{{item.regexp}}"
+        line: "{{item.line}}"
+      loop:
+        - regexp: '^LIVEKITNAME='
+          line: 'LIVEKITNAME="andy-liveusb"'
+        - regexp: '^VMLINUZ='
+          line: 'VMLINUZ=/boot/vmlinuz'
+
+    - name: Build squashfs
+      command: /linux-live/build
