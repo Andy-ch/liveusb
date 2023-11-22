@@ -2,6 +2,9 @@
 - hosts: lisa
   become: yes
   tasks:
+    - name: Resize FS up to 50 GB
+      command: /usr/sbin/resize2fs /dev/sda1
+
     - name: Enable autologin
       lineinfile:
         path: /etc/sddm.conf
@@ -90,3 +93,6 @@
 
     - name: Build squashfs
       command: /linux-live/build
+
+    - name: Compile ISO
+      command: /bin/bash /tmp/gen_andy-liveusb_iso.sh
